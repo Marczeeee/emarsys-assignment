@@ -120,6 +120,17 @@ public class TestRoutePlanner {
 		routePlanner.planRoute(destinations);
 	}
 
+	@Test(expected = IllegalArgumentException.class)
+	public void testRoutePlannerError_illegalDependentDestination() {
+		final Collection<String> destinations = new ArrayList<String>(1);
+		destinations.add(createDestinationString("x", null));
+		destinations.add(createDestinationString("y", null));
+		destinations.add(createDestinationString("z", "w"));
+
+		final RoutePlanner routePlanner = new RoutePlanner();
+		routePlanner.planRoute(destinations);
+	}
+
 	private String createDestinationString(final String name, final String dependentName) {
 		final StringBuilder sb = new StringBuilder(name);
 		sb.append(" => ");

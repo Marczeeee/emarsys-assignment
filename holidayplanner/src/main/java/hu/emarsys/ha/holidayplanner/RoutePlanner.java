@@ -38,7 +38,8 @@ public class RoutePlanner {
 	public final String planRoute(final Collection<String> destinationDefs) {
 		logger.info("Planning route for destinations: {}", destinationDefs);
 		if ((destinationDefs == null) || destinationDefs.isEmpty()) {
-			throw new IllegalArgumentException("No destinations was present");
+			logger.error("No destination definitions were present ({})", destinationDefs);
+			throw new IllegalArgumentException("No destinations were present");
 		}
 
 		final Collection<Destination> destinations = convertDefsToDestinations(destinationDefs);
@@ -64,21 +65,29 @@ public class RoutePlanner {
 	private Collection<Destination> convertDefsToDestinations(final Collection<String> destinationDefs) {
 		final Map<String, Destination> destinationMap = new HashMap<String, Destination>(destinationDefs.size());
 		// Process destinations defined
+		logger.debug("Processing primary destinations in destination definitions");
 		for (final String destinationDef : destinationDefs) {
+			logger.trace("Processing destination definition: {}", destinationDef);
 			final String[] destinationDefVars = destinationDef.split(DEST_SPLIT_STRING);
 			final String destinationName = destinationDefVars[0].trim();
+			logger.trace("Found primary destination: {}", destinationName);
 			if (!destinationMap.containsKey(destinationName)) {
 				destinationMap.put(destinationName, new Destination(destinationName));
 			}
 		}
 
 		// Process dependent destinations where defined
+		logger.debug("Processing dependent destinations in destination definitions");
 		for (final String destinationDef : destinationDefs) {
+			logger.trace("Processing destination definition: {}", destinationDef);
 			final String[] destinationDefVars = destinationDef.split(DEST_SPLIT_STRING);
 			final String destinationName = destinationDefVars[0].trim();
+			logger.trace("Identified primary destination ({}), looking for dependent destination", destinationName);
 			if ((destinationDefVars.length > 1) && StringUtils.isNotBlank(destinationDefVars[1])) {
 				final Destination destination = destinationMap.get(destinationName);
 				final String dependentDestinationName = destinationDefVars[1].trim();
+				logger.trace("Found dependent destination definition ({}) for primary destination ({})",
+						dependentDestinationName, destinationName);
 				if (!destinationMap.containsKey(dependentDestinationName)) {
 					logger.error("Dependent destination ({}) is not a valid destination!", dependentDestinationName);
 					throw new IllegalArgumentException(
@@ -91,6 +100,8 @@ public class RoutePlanner {
 				if (!destinationMap.containsKey(dependentDestinationName)) {
 					destinationMap.put(dependentDestinationName, new Destination(dependentDestinationName));
 				}
+				logger.trace("Add dependent destination ({}) to primary destination ({}) dependent list",
+						dependentDestinationName, destinationName);
 				destination.getDependentDestinations().add(destinationMap.get(dependentDestinationName));
 			}
 		}
@@ -108,10 +119,12 @@ public class RoutePlanner {
 	 */
 	private Set<Destination> doDestinationsPlanning(final Collection<Destination> destinations) {
 		final Set<Destination> route = new LinkedHashSet<Destination>(destinations.size(), 1);
+		logger.debug("Do route planning of destinations: {}", destinations);
 		for (final Destination destination : destinations) {
 			final Stack<Destination> dependentStack = new Stack<Destination>();
 			insertDestinationToPlan(destination, route, dependentStack);
 		}
+		logger.debug("Route planning resulted in final route:  {}", route);
 		return route;
 	}
 
@@ -129,12 +142,17 @@ public class RoutePlanner {
 	 */
 	private void insertDestinationToPlan(final Destination destination, final Set<Destination> currentRoute,
 			final Stack<Destination> dependentStack) {
+		logger.debug("Try to find place of destination ({}) in current route ({})", destination, currentRoute);
 		if (currentRoute.contains(destination)) {
+			logger.debug("Destination ({}) is already in the route, skipping it.", destination);
 			return;
 		}
 		if (!destination.getDependentDestinations().isEmpty()) {
+			logger.trace("Destination ({}) has dependent destinations ({}), processing them", destination,
+					destination.getDependentDestinations());
 			dependentStack.push(destination);
 			for (final Destination dependentDestination : destination.getDependentDestinations()) {
+				logger.trace("Processing dependent destination ({}) in route planning", dependentDestination);
 				if (dependentStack.contains(dependentDestination)) {
 					logger.error("Cyclic dependency on destination [{}]", destination);
 					throw new IllegalArgumentException(
@@ -143,6 +161,7 @@ public class RoutePlanner {
 				insertDestinationToPlan(dependentDestination, currentRoute, dependentStack);
 			}
 		}
+		logger.debug("Adding destination ({}) to current route", destination);
 		currentRoute.add(destination);
 	}
 
@@ -155,6 +174,7 @@ public class RoutePlanner {
 	 * @return textual representation of the route
 	 */
 	private String createResultString(final Collection<Destination> orderedDestinations) {
+		logger.trace("Converting destination route ({}) to string", orderedDestinations);
 		final StringBuilder sb = new StringBuilder();
 		for (final Destination destination : orderedDestinations) {
 			sb.append(destination.getName());

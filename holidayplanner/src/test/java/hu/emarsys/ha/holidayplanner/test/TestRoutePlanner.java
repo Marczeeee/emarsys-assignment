@@ -101,6 +101,21 @@ public class TestRoutePlanner {
 	}
 
 	@Test(expected = IllegalArgumentException.class)
+	public void testRoutePlannerError_nullDestination() {
+
+		final RoutePlanner routePlanner = new RoutePlanner();
+		routePlanner.planRoute(null);
+	}
+
+	@Test(expected = IllegalArgumentException.class)
+	public void testRoutePlannerError_noDestinationGiven() {
+		final Collection<String> destinations = new ArrayList<String>(1);
+
+		final RoutePlanner routePlanner = new RoutePlanner();
+		routePlanner.planRoute(destinations);
+	}
+
+	@Test(expected = IllegalArgumentException.class)
 	public void testRoutePlannerError_dependentOnItself() {
 		final Collection<String> destinations = new ArrayList<String>(1);
 		destinations.add(createDestinationString("x", "x"));
